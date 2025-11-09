@@ -22,8 +22,10 @@
  * limitations under the License.
  */
 
-import { MatterbridgeDynamicPlatform, MatterbridgeEndpoint, onOffOutlet, PlatformConfig, PlatformMatterbridge } from 'matterbridge';
+import LightwaveClient from '@evops/lightwaverf';
+import { CommandHandlerData, dimmableLight, MatterbridgeDynamicPlatform, MatterbridgeEndpoint, onOffLight, onOffOutlet, PlatformConfig, PlatformMatterbridge } from 'matterbridge';
 import { AnsiLogger, LogLevel } from 'matterbridge/logger';
+import { LevelControl } from 'matterbridge/matter/clusters';
 
 /**
  * This is the standard interface for Matterbridge plugins.
@@ -32,15 +34,17 @@ import { AnsiLogger, LogLevel } from 'matterbridge/logger';
  * @param {PlatformMatterbridge} matterbridge - An instance of MatterBridge.
  * @param {AnsiLogger} log - An instance of AnsiLogger. This is used for logging messages in a format that can be displayed with ANSI color codes and in the frontend.
  * @param {PlatformConfig} config - The platform configuration.
- * @returns {TemplatePlatform} - An instance of the MatterbridgeAccessory or MatterbridgeDynamicPlatform class. This is the main interface for interacting with the Matterbridge system.
+ * @returns {LightwaveRfPlatform} - An instance of the MatterbridgeAccessory or MatterbridgeDynamicPlatform class. This is the main interface for interacting with the Matterbridge system.
  */
-export default function initializePlugin(matterbridge: PlatformMatterbridge, log: AnsiLogger, config: PlatformConfig): TemplatePlatform {
-  return new TemplatePlatform(matterbridge, log, config);
+export default function initializePlugin(matterbridge: PlatformMatterbridge, log: AnsiLogger, config: PlatformConfig): LightwaveRfPlatform {
+  return new LightwaveRfPlatform(matterbridge, log, config);
 }
 
 // Here we define the TemplatePlatform class, which extends the MatterbridgeDynamicPlatform.
 // If you want to create an Accessory platform plugin, you should extend the MatterbridgeAccessoryPlatform class instead.
-export class TemplatePlatform extends MatterbridgeDynamicPlatform {
+export class LightwaveRfPlatform extends MatterbridgeDynamicPlatform {
+  private client: LightwaveClient.default;
+
   constructor(matterbridge: PlatformMatterbridge, log: AnsiLogger, config: PlatformConfig) {
     // Always call super(matterbridge, log, config)
     super(matterbridge, log, config);
@@ -53,7 +57,10 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
     }
 
     this.log.info(`Initializing Platform...`);
-    // You can initialize your platform here, like setting up initial state or loading configurations.
+    this.client = new LightwaveClient.default({
+      email: this.config.email,
+      pin: this.config.pin,
+    });
   }
 
   override async onStart(reason?: string) {
@@ -66,14 +73,14 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
     await this.clearSelect();
 
     // Implements your own logic there
-    await this.discoverDevices();
+    await this.establishConnection();
   }
 
   override async onConfigure() {
     // Always call super.onConfigure()
     await super.onConfigure();
 
-    this.log.info('onConfigure called');
+    this.log.info('onConfigure called, what do we do here?');
 
     // Configure all your devices. The persisted attributes need to be updated.
     for (const device of this.getDevices()) {
@@ -96,26 +103,112 @@ export class TemplatePlatform extends MatterbridgeDynamicPlatform {
     if (this.config.unregisterOnShutdown === true) await this.unregisterAllDevices();
   }
 
-  private async discoverDevices() {
+  private async establishConnection() {
     this.log.info('Discovering devices...');
     // Implement device discovery logic here.
     // For example, you might fetch devices from an API.
     // and register them with the Matterbridge instance.
 
-    // Example: Create and register an outlet device
-    // If you want to create an Accessory platform plugin and your platform extends MatterbridgeAccessoryPlatform,
-    // instead of createDefaultBridgedDeviceBasicInformationClusterServer, call createDefaultBasicInformationClusterServer().
-    const outlet = new MatterbridgeEndpoint(onOffOutlet, { uniqueStorageKey: 'outlet1' })
-      .createDefaultBridgedDeviceBasicInformationClusterServer('Outlet', 'SN123456', this.matterbridge.aggregatorVendorId, 'Matterbridge', 'Matterbridge Outlet', 10000, '1.0.0')
+    await this.client.connect();
+    this.log.info('Connected to LightwaveRF');
+
+    const isRegistered = await this.client.isRegistered();
+
+    if (isRegistered) {
+      this.updateDevices();
+      return;
+    }
+
+    const registerButton = new MatterbridgeEndpoint(onOffOutlet, { uniqueStorageKey: 'registerButton1' })
+      .createDefaultBridgedDeviceBasicInformationClusterServer(
+        'Register Button',
+        'SN000002',
+        this.matterbridge.aggregatorVendorId,
+        'Matterbridge',
+        'Matterbridge Register Button',
+        10000,
+        '1.0.0',
+      )
       .createDefaultPowerSourceWiredClusterServer()
       .addRequiredClusterServers()
-      .addCommandHandler('on', (data) => {
+      .addCommandHandler('on', async (data) => {
         this.log.info(`Command on called on cluster ${data.cluster}`);
+        await this.client.ensureRegistration();
+
+        // Fireoff device discovery
+        this.updateDevices();
+
+        this.log.info('Registered with LightwaveRF');
+        registerButton.updateAttribute(data.cluster, 'onOff', false, this.log);
+        setImmediate(() => {
+          // Remove button after successful registration
+          this.unregisterDevice(registerButton);
+        });
       })
       .addCommandHandler('off', (data) => {
         this.log.info(`Command off called on cluster ${data.cluster}`);
       });
 
-    await this.registerDevice(outlet);
+    await this.registerDevice(registerButton);
+  }
+
+  private async updateDevices() {
+    const devices = await this.client.getDevices();
+    for (const device of devices) {
+      const uniqueDeviceId = `${device.roomId}-${device.deviceId}`;
+      const deviceName = `${device.roomName} ${device.deviceName}`;
+
+      const deviceOff = this.client.turnOff.bind(this.client, device);
+      const deviceOn = this.client.turnOn.bind(this.client, device);
+      const deviceDim = (data: CommandHandlerData) => {
+        this.log.info('Move to level request');
+        const request = data.request as LevelControl.MoveToLevelRequest;
+        this.log.info('Move to level request: %o', request);
+        const percentage = (request.level / 254) * 100;
+        this.log.info(`Command moveToLevel called on cluster ${data.cluster} with level ${JSON.stringify(data)}`, {
+          percentage,
+        });
+
+        this.client.dim(device, percentage);
+      };
+
+      if (device.deviceType === 'D') {
+        const dimmer = new MatterbridgeEndpoint(dimmableLight, { uniqueStorageKey: uniqueDeviceId })
+          .createDefaultBridgedDeviceBasicInformationClusterServer(
+            deviceName,
+            this.client.version ?? 'SN000001',
+            this.matterbridge.aggregatorVendorId,
+            'Lightwave',
+            'Dimmer',
+            10000,
+            this.client.version ?? '1.0.0',
+          )
+          .createDefaultPowerSourceWiredClusterServer()
+          .addRequiredClusterServers()
+          .addCommandHandler('on', deviceOn)
+          .addCommandHandler('off', deviceOff)
+          .addCommandHandler('moveToLevel', deviceDim)
+          .addCommandHandler('moveToLevelWithOnOff', deviceDim);
+
+        await this.registerDevice(dimmer);
+      } else {
+        const onOff = new MatterbridgeEndpoint(onOffLight, { uniqueStorageKey: uniqueDeviceId })
+          .createDefaultBridgedDeviceBasicInformationClusterServer(
+            deviceName,
+            this.client.version ?? 'SN000001',
+            this.matterbridge.aggregatorVendorId,
+            'Lightwave',
+            'Light switch',
+            10000,
+            this.client.version ?? '1.0.0',
+          )
+          .createDefaultPowerSourceWiredClusterServer()
+          .addRequiredClusterServers()
+          .addCommandHandler('on', deviceOn)
+          .addCommandHandler('off', deviceOff);
+
+        await this.registerDevice(onOff);
+      }
+    }
   }
 }

@@ -1,0 +1,36 @@
+{
+  "title": "Lightwave Matterbridge plugin",
+  "description": "Connects to Lightwave connect series cloud and device to control all Lighwave devices in the home",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Plugin name",
+      "type": "string",
+      "readOnly": true
+    },
+    "type": {
+      "description": "Plugin type",
+      "type": "string",
+      "readOnly": true
+    },
+    "debug": {
+      "description": "Enable the debug for the plugin (development only)",
+      "type": "boolean",
+      "default": false
+    },
+    "unregisterOnShutdown": {
+      "description": "Unregister all devices on shutdown (development only)",
+      "type": "boolean",
+      "default": false
+    },
+    "email": {
+      "description": "Email to use to login to Lightwave cloud",
+      "type": "string",
+      "format": "email"
+    },
+    "pin": {
+      "description": "PIN to use to login to Lightwave cloud",
+      "type": "string"
+    }
+  }
+}
