@@ -2,8 +2,8 @@
   "name": "matterbridge-plugin-lightwaverf",
   "version": "1.0.1",
   "description": "Matterbridge LightwaveRF Plugin",
-  "author": "https://github.com/sponte",
-  "homepage": "https://github.com/sponte/matterbridge-plugin-lightwaverf/blob/main/README.md",
+  "author": "https://github.com/eu-evops",
+  "homepage": "https://github.com/eu-evops/matterbridge-plugin-lightwaverf/blob/main/README.md",
   "license": "Apache-2.0",
   "type": "module",
   "main": "dist/module.js",
@@ -12,10 +12,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sponte/matterbridge-plugin-lightwaverf.git"
+    "url": "git+https://github.com/eu-evops/matterbridge-plugin-lightwaverf.git"
   },
   "bugs": {
-    "url": "https://github.com/sponte/matterbridge-plugin-lightwaverf/issues"
+    "url": "https://github.com/eu-evops/matterbridge-plugin-lightwaverf/issues"
   },
   "funding": {
     "type": "buymeacoffee",
