@@ -22,9 +22,9 @@
       }
     },
     "node_modules/@evops/lightwaverf": {
-      "version": "1.0.2",
-      "resolved": "https://registry.npmjs.org/@evops/lightwaverf/-/lightwaverf-1.0.2.tgz",
-      "integrity": "sha512-TrSBN1YyWk4L5+v4tRgpA98MRlfmcf2b8mNWKShg5CKPo7csozKXxkfTQ37r+VouTljroPjRQtrv9CkFQk2nrg==",
+      "version": "1.0.3",
+      "resolved": "https://registry.npmjs.org/@evops/lightwaverf/-/lightwaverf-1.0.3.tgz",
+      "integrity": "sha512-kmc1nnWRq/6Tag/GR1gTG+8gtYRRbwL6PGHd2c62jo7bd8ftzBWkY0/D82pgtIl1JcfkDhkpJj+SmkOjMddpTg==",
       "license": "MIT",
       "dependencies": {
         "@types/debug": "^4.1.7",
