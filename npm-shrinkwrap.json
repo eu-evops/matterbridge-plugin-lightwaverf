@@ -1,12 +1,12 @@
 {
   "name": "matterbridge-plugin-lightwaverf",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
     "": {
       "name": "matterbridge-plugin-lightwaverf",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "license": "Apache-2.0",
       "dependencies": {
         "@evops/lightwaverf": "^1.0.0",
@@ -22,9 +22,9 @@
       }
     },
     "node_modules/@evops/lightwaverf": {
-      "version": "1.0.3",
-      "resolved": "https://registry.npmjs.org/@evops/lightwaverf/-/lightwaverf-1.0.3.tgz",
-      "integrity": "sha512-kmc1nnWRq/6Tag/GR1gTG+8gtYRRbwL6PGHd2c62jo7bd8ftzBWkY0/D82pgtIl1JcfkDhkpJj+SmkOjMddpTg==",
+      "version": "1.0.4",
+      "resolved": "https://registry.npmjs.org/@evops/lightwaverf/-/lightwaverf-1.0.4.tgz",
+      "integrity": "sha512-e8Yg374QYyXPQjkiJMBlDZbO/0zkRVziYgL3pyjINPFic3VhykaQW3XOyZseZET3AbET+SnjeCvZDEIhyRn61w==",
       "license": "MIT",
       "dependencies": {
         "@types/debug": "^4.1.7",
