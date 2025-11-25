@@ -22,10 +22,19 @@
  * limitations under the License.
  */
 
-import LightwaveClient from '@evops/lightwaverf';
-import { CommandHandlerData, dimmableLight, MatterbridgeDynamicPlatform, MatterbridgeEndpoint, onOffLight, onOffOutlet, PlatformConfig, PlatformMatterbridge } from 'matterbridge';
-import { AnsiLogger, LogLevel } from 'matterbridge/logger';
-import { LevelControl } from 'matterbridge/matter/clusters';
+import LightwaveClient from "@evops/lightwaverf";
+import {
+  CommandHandlerData,
+  dimmableLight,
+  MatterbridgeDynamicPlatform,
+  MatterbridgeEndpoint,
+  onOffLight,
+  onOffOutlet,
+  PlatformConfig,
+  PlatformMatterbridge,
+} from "matterbridge";
+import { AnsiLogger, LogLevel } from "matterbridge/logger";
+import { LevelControl } from "matterbridge/matter/clusters";
 
 /**
  * This is the standard interface for Matterbridge plugins.
@@ -36,7 +45,11 @@ import { LevelControl } from 'matterbridge/matter/clusters';
  * @param {PlatformConfig} config - The platform configuration.
  * @returns {LightwaveRfPlatform} - An instance of the MatterbridgeAccessory or MatterbridgeDynamicPlatform class. This is the main interface for interacting with the Matterbridge system.
  */
-export default function initializePlugin(matterbridge: PlatformMatterbridge, log: AnsiLogger, config: PlatformConfig): LightwaveRfPlatform {
+export default function initializePlugin(
+  matterbridge: PlatformMatterbridge,
+  log: AnsiLogger,
+  config: PlatformConfig
+): LightwaveRfPlatform {
   return new LightwaveRfPlatform(matterbridge, log, config);
 }
 
@@ -45,14 +58,22 @@ export default function initializePlugin(matterbridge: PlatformMatterbridge, log
 export class LightwaveRfPlatform extends MatterbridgeDynamicPlatform {
   private client: LightwaveClient.default;
 
-  constructor(matterbridge: PlatformMatterbridge, log: AnsiLogger, config: PlatformConfig) {
+  constructor(
+    matterbridge: PlatformMatterbridge,
+    log: AnsiLogger,
+    config: PlatformConfig
+  ) {
     // Always call super(matterbridge, log, config)
     super(matterbridge, log, config);
 
     // Verify that Matterbridge is the correct version
-    if (this.verifyMatterbridgeVersion === undefined || typeof this.verifyMatterbridgeVersion !== 'function' || !this.verifyMatterbridgeVersion('3.3.0')) {
+    if (
+      this.verifyMatterbridgeVersion === undefined ||
+      typeof this.verifyMatterbridgeVersion !== "function" ||
+      !this.verifyMatterbridgeVersion("3.3.0")
+    ) {
       throw new Error(
-        `This plugin requires Matterbridge version >= "3.3.0". Please update Matterbridge from ${this.matterbridge.matterbridgeVersion} to the latest version in the frontend."`,
+        `This plugin requires Matterbridge version >= "3.3.0". Please update Matterbridge from ${this.matterbridge.matterbridgeVersion} to the latest version in the frontend."`
       );
     }
 
@@ -64,7 +85,7 @@ export class LightwaveRfPlatform extends MatterbridgeDynamicPlatform {
   }
 
   override async onStart(reason?: string) {
-    this.log.info(`onStart called with reason: ${reason ?? 'none'}`);
+    this.log.info(`onStart called with reason: ${reason ?? "none"}`);
 
     // Wait for the platform to fully load the select
     await this.ready;
@@ -80,7 +101,7 @@ export class LightwaveRfPlatform extends MatterbridgeDynamicPlatform {
     // Always call super.onConfigure()
     await super.onConfigure();
 
-    this.log.info('onConfigure called, what do we do here?');
+    this.log.info("onConfigure called, what do we do here?");
 
     // Configure all your devices. The persisted attributes need to be updated.
     for (const device of this.getDevices()) {
@@ -99,18 +120,19 @@ export class LightwaveRfPlatform extends MatterbridgeDynamicPlatform {
     // Always call super.onShutdown(reason)
     await super.onShutdown(reason);
 
-    this.log.info(`onShutdown called with reason: ${reason ?? 'none'}`);
-    if (this.config.unregisterOnShutdown === true) await this.unregisterAllDevices();
+    this.log.info(`onShutdown called with reason: ${reason ?? "none"}`);
+    if (this.config.unregisterOnShutdown === true)
+      await this.unregisterAllDevices();
   }
 
   private async establishConnection() {
-    this.log.info('Discovering devices...');
+    this.log.info("Discovering devices...");
     // Implement device discovery logic here.
     // For example, you might fetch devices from an API.
     // and register them with the Matterbridge instance.
 
     await this.client.connect();
-    this.log.info('Connected to LightwaveRF');
+    this.log.info("Connected to LightwaveRF");
 
     const isRegistered = await this.client.isRegistered();
 
@@ -119,33 +141,35 @@ export class LightwaveRfPlatform extends MatterbridgeDynamicPlatform {
       return;
     }
 
-    const registerButton = new MatterbridgeEndpoint(onOffOutlet, { uniqueStorageKey: 'registerButton1' })
+    const registerButton = new MatterbridgeEndpoint(onOffOutlet, {
+      uniqueStorageKey: "registerButton1",
+    })
       .createDefaultBridgedDeviceBasicInformationClusterServer(
-        'Register Button',
-        'SN000002',
+        "Register Button",
+        "SN000002",
         this.matterbridge.aggregatorVendorId,
-        'Matterbridge',
-        'Matterbridge Register Button',
+        "Matterbridge",
+        "Matterbridge Register Button",
         10000,
-        '1.0.0',
+        "1.0.0"
       )
       .createDefaultPowerSourceWiredClusterServer()
       .addRequiredClusterServers()
-      .addCommandHandler('on', async (data) => {
+      .addCommandHandler("on", async (data) => {
         this.log.info(`Command on called on cluster ${data.cluster}`);
         await this.client.ensureRegistration();
 
         // Fireoff device discovery
         this.updateDevices();
 
-        this.log.info('Registered with LightwaveRF');
-        registerButton.updateAttribute(data.cluster, 'onOff', false, this.log);
+        this.log.info("Registered with LightwaveRF");
+        registerButton.updateAttribute(data.cluster, "onOff", false, this.log);
         setImmediate(() => {
           // Remove button after successful registration
           this.unregisterDevice(registerButton);
         });
       })
-      .addCommandHandler('off', (data) => {
+      .addCommandHandler("off", (data) => {
         this.log.info(`Command off called on cluster ${data.cluster}`);
       });
 
@@ -161,51 +185,60 @@ export class LightwaveRfPlatform extends MatterbridgeDynamicPlatform {
       const deviceOff = this.client.turnOff.bind(this.client, device);
       const deviceOn = this.client.turnOn.bind(this.client, device);
       const deviceDim = (data: CommandHandlerData) => {
-        this.log.info('Move to level request');
+        this.log.info("Move to level request");
         const request = data.request as LevelControl.MoveToLevelRequest;
-        this.log.info('Move to level request: %o', request);
+        this.log.info("Move to level request: %o", request);
         const percentage = (request.level / 254) * 100;
-        this.log.info(`Command moveToLevel called on cluster ${data.cluster} with level ${JSON.stringify(data)}`, {
-          percentage,
-        });
+        this.log.info(
+          `Command moveToLevel called on cluster ${
+            data.cluster
+          } with level ${JSON.stringify(data)}`,
+          {
+            percentage,
+          }
+        );
 
         this.client.dim(device, percentage);
       };
 
-      if (device.deviceType === 'D') {
-        const dimmer = new MatterbridgeEndpoint(dimmableLight, { uniqueStorageKey: uniqueDeviceId })
+      if (device.deviceType === "D") {
+        const dimmer = new MatterbridgeEndpoint(dimmableLight, {
+          id: uniqueDeviceId,
+        })
           .createDefaultBridgedDeviceBasicInformationClusterServer(
             deviceName,
-            this.client.version ?? 'SN000001',
+            this.client.version ?? "SN000001",
             this.matterbridge.aggregatorVendorId,
-            'Lightwave',
-            'Dimmer',
+            "Lightwave",
+            "Dimmer",
             10000,
-            this.client.version ?? '1.0.0',
+            this.client.version ?? "1.0.0"
           )
           .createDefaultPowerSourceWiredClusterServer()
           .addRequiredClusterServers()
-          .addCommandHandler('on', deviceOn)
-          .addCommandHandler('off', deviceOff)
-          .addCommandHandler('moveToLevel', deviceDim)
-          .addCommandHandler('moveToLevelWithOnOff', deviceDim);
+          .addCommandHandler("on", deviceOn)
+          .addCommandHandler("off", deviceOff)
+          .addCommandHandler("moveToLevel", deviceDim)
+          .addCommandHandler("moveToLevelWithOnOff", deviceDim);
 
         await this.registerDevice(dimmer);
       } else {
-        const onOff = new MatterbridgeEndpoint(onOffLight, { uniqueStorageKey: uniqueDeviceId })
+        const onOff = new MatterbridgeEndpoint(onOffLight, {
+          id: uniqueDeviceId,
+        })
           .createDefaultBridgedDeviceBasicInformationClusterServer(
             deviceName,
-            this.client.version ?? 'SN000001',
+            this.client.version ?? "SN000001",
             this.matterbridge.aggregatorVendorId,
-            'Lightwave',
-            'Light switch',
+            "Lightwave",
+            "Light switch",
             10000,
-            this.client.version ?? '1.0.0',
+            this.client.version ?? "1.0.0"
           )
           .createDefaultPowerSourceWiredClusterServer()
           .addRequiredClusterServers()
-          .addCommandHandler('on', deviceOn)
-          .addCommandHandler('off', deviceOff);
+          .addCommandHandler("on", deviceOn)
+          .addCommandHandler("off", deviceOff);
 
         await this.registerDevice(onOff);
       }
